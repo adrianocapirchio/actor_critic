@@ -89,15 +89,6 @@ if __name__ == "__main__":
             wrist.actual_2dposition = utils.Cut_range(wrist.actual_2dposition, -0.99999, 0.99999) 
             agent.set_data(wrist.actual_2dposition[0], wrist.actual_2dposition[1])
           #  plt.pause(0.1)
-        #    for t in range(int(10)):
-         #       wrist.previous_2derror = wrist.actual_2derror.copy()
-          #      wrist.previous_2dposition = wrist.actual_2dposition.copy() 
-           #     wrist.previous_2dvelocity = wrist.actual_2dvelocity.copy()
-           #     wrist.previous_2dacceleration = wrist.actual_2dacceleration.copy()   
-                
-          #      wrist.actual_2dposition = wrist.move2d(wrist.next_2dposition, wrist.actual_2dposition, wrist.actual_2dacceleration, wrist.previous_2derror, wrist.previous_2dposition, wrist.previous_2dvelocity, bg.delta_time, bg.tau)
-          #      agent.set_data(wrist.actual_2dposition[0], wrist.actual_2dposition[1])
-           #     plt.pause(0.001)
                 
             # storage old state 
             bg.previous_state = bg.actual_state.copy()
@@ -109,7 +100,7 @@ if __name__ == "__main__":
                 
                 # compute reward distance
                 distance = utils.Distance(wrist.actual_2dposition[0],reward_position[0],wrist.actual_2dposition[1],reward_position[1])
-                #print distance
+
                 # get the reward
                 if distance < 0.1:
                     print "presa"
