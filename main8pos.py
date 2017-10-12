@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import math_utils as utils
 from ActorCritic8pos import ActorCritic
 from Wrist import Wrist
+from mpl_toolkits.mplot3d import *
 
 if __name__ == "__main__":
     
@@ -18,7 +19,7 @@ if __name__ == "__main__":
     bg.init()
     wrist.init(bg.gaussian_number)
     
-    startPlotting = 1990
+    startPlotting = 0
     # start trials
     for trial in xrange(bg.n_trial):
         
@@ -30,11 +31,9 @@ if __name__ == "__main__":
         
         if trial == startPlotting:
               #♣ INIT 2d plotting         
-             fig1   = plt.figure("Workspace",figsize=(50,50))
+             fig1   = plt.figure("Workspace",figsize=(80,80))
              
-             # add counters
-             text1 = plt.figtext(0.9, 0.2, "trial = %s" % (0), style='italic', bbox={'facecolor':'green'})
-             text2 = plt.figtext(0.1, 0.2, "movement = %s" % (0), style='italic', bbox={'facecolor':'red'})
+             
              
              circle1 = plt.Circle((5 , 8), 0.5, color = 'yellow') 
              circle2 = plt.Circle((7 , 7), 0.5, color = 'yellow')
@@ -45,7 +44,8 @@ if __name__ == "__main__":
              circle7 = plt.Circle((2 , 5), 0.5, color = 'yellow')
              circle8 = plt.Circle((3 , 7), 0.5, color = 'yellow')
         
-             ax1 = fig1.add_subplot(111)
+             ax1 = fig1.add_subplot(222)
+             
              ax1.set_xlim([0,10])
              ax1.set_ylim([0,10])
              ax1.add_artist(circle1)
@@ -58,9 +58,27 @@ if __name__ == "__main__":
              ax1.add_artist(circle8)
              reward, = ax1.plot(wrist.reward_position[0] , wrist.reward_position[1], 'x', color='r')
              agent, = ax1.plot(wrist.actual_2dposition[0], wrist.actual_2dposition[1], 'o')
-            
+             
+             ax2  = fig1.add_subplot(221, projection='3d')
+             # set limits
+             ax2.set_xlim([0,1])
+             ax2.set_ylim([0,1])
+             ax2.set_zlim([0,1])
+             # set ticks
+             ax2.set_xticks(np.arange(0, 1, 0.1))
+             ax2.set_yticks(np.arange(0, 1, 0.1))
+             ax2.set_zticks(np.arange(0, 1, 0.1))
+             # add counters
+             text1 = plt.figtext(.9, .1, "trial = %s" % (0), style='italic', bbox={'facecolor':'green'})
+             text2 = plt.figtext(.1, .9, "movement = %s" % (0), style='italic', bbox={'facecolor':'red'})
+             
+             agent3d, = ax2.plot([wrist.actual_3dposition[0]], [wrist.actual_3dposition[1]], [wrist.actual_3dposition[2]], 'o', color="blue")
+             
+             
         if trial > startPlotting:
              text1.set_text("trial = %s" % (trial))
+             agent3d.remove()
+             agent3d, = ax2.plot([wrist.actual_3dposition[0]], [wrist.actual_3dposition[1]], [wrist.actual_3dposition[2]], 'o', color="blue")
              reward.set_data(wrist.reward_position[0], wrist.reward_position[1])
              agent.set_data(wrist.actual_2dposition[0], wrist.actual_2dposition[1])
              plt.pause(0.1)
@@ -111,7 +129,7 @@ if __name__ == "__main__":
             wrist.actual_3dposition = wrist.move3d(bg.ep3d)
             
             # conversion to 2d movement
-            wrist.delta_2dposition = utils.conversion2d(utils.change_range(wrist.actual_3dposition , 0, 1, -1, 1))  
+            wrist.delta_2dposition = utils.conversion2d(utils.change_range(wrist.actual_3dposition , 0, 1, -1, 1)) 
                                                     
             # compute 2d final position 
             wrist.actual_2dposition[0] = wrist.actual_2dposition[0] - wrist.delta_2dposition[0]       
@@ -120,6 +138,8 @@ if __name__ == "__main__":
             
             if trial > startPlotting:   
                 text2.set_text("movement = %s" % (movement))
+                agent3d.remove()
+                agent3d, = ax2.plot([wrist.actual_3dposition[0]], [wrist.actual_3dposition[1]], [wrist.actual_3dposition[2]], 'o', color="blue")
                 agent.set_data(wrist.actual_2dposition[0], wrist.actual_2dposition[1])
                 plt.pause(0.1)
                 
