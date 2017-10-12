@@ -44,7 +44,7 @@ class ActorCritic:
         self.delta_time = 0.1
         self.steps = self.simulation_duration / self.delta_time
         self.tau = 1.  
-        self.n_trial = 1000
+        self.n_trial = 2000
         self.max_trial_movements = 2000
     
         # input units
