@@ -22,14 +22,14 @@ def clipped_exp(x):
 
 def computate_noise(previous_noise, delta_time, tau): 
     C1 = delta_time / tau
-    C2 = 1.5
+    C2 = 1.1
     return previous_noise + C1 * (C2 * np.random.randn(*previous_noise.shape) - previous_noise)
 
 def derivative(x1, x2, delta_time, tau):
     return (x1 - x2) / (delta_time / tau)
 
 def Cut_range(x, x_min, x_high):
-    return np.maximum(x_min, np.minimum(1,x))
+    return np.maximum(x_min, np.minimum(x_high,x))
 
 def squared_distance(x1,x2):
     return np.absolute((x1 - x2)**2)
@@ -74,11 +74,27 @@ def computeXValue(gaussian_number, interval_lenght, X):
             X[gn] = X[gn-1] + interval_lenght
              
 def placeReward(trial):
-    if trial / 2 == 0:
-        reward_position = np.array([0.,0.75])
-    else: 
-        reward_position = np.array([0.,-0.75])
+    
+    reward_position = np.zeros(2)
+    
+    if trial % 8 == 0:
+        reward_position = np.array([5 , 8])
+    if trial % 8 == 1:
+        reward_position = np.array([7 , 7])
+    if trial % 8 == 2:
+        reward_position = np.array([8 , 5])
+    if trial % 8 == 3:
+        reward_position = np.array([7 , 3])
+    if trial % 8 == 4:
+        reward_position = np.array([5 , 2])
+    if trial % 8 == 5:
+        reward_position = np.array([3 , 3])
+    if trial % 8 == 6:
+        reward_position = np.array([2 , 5])
+    if trial % 8 == 7:
+        reward_position = np.array([3 , 7])
     return reward_position    
+
     
 
     

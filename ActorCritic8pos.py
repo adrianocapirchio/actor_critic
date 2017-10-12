@@ -5,6 +5,12 @@ Created on Tue Oct 03 15:36:46 2017
 @author: Alex
 """
 
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 03 15:36:46 2017
+@author: Alex
+"""
+
 import numpy as np
 
 class ActorCritic:
@@ -24,22 +30,22 @@ class ActorCritic:
             if gn == 0 :
                 self.X_pos[0] = 0    
             else:
-                self.X_pos[gn] = self.X_pos[gn-1] + self.interval_lenght
+                self.X_pos[gn] = self.X_pos[gn-1] + self.interval_lenght 
                       
         # computate gaussian's average values
         for gn in xrange(self.gaussian_number):
             if gn == 0 :
                 self.X_rew[0] = 0    
             else:
-                self.X_rew[gn] = self.X_rew[gn-1] + self.interval_lenght
+                self.X_rew[gn] = self.X_rew[gn-1] + self.interval_lenght* 10
         
         # TIME PARAMETERS
         self.simulation_duration = 1.
         self.delta_time = 0.1
         self.steps = self.simulation_duration / self.delta_time
         self.tau = 1.  
-        self.n_trial = 2000
-        self.max_trial_movements = 5000
+        self.n_trial = 1000
+        self.max_trial_movements = 2000
     
         # input units
         self.n_input = self.gaussian_number
@@ -49,22 +55,20 @@ class ActorCritic:
         self.critic_n_output = 1
         
         # learning parameters
-        self.a_eta = 0.1
-        self.c_eta = 0.08
+        self.a_eta = 0.3
+        self.c_eta = 0.001
         self.discount_factor = 0.98
         
         # ANN's state arrays
-        self.reward_state = np.zeros(self.gaussian_number * 2)
-        self.position_state = np.zeros([self.gaussian_number * DOF])
-        self.actual_state = np.zeros([self.gaussian_number * (DOF+2)])
-        self.previous_state = np.zeros([self.gaussian_number * DOF])
+        self.actual_state = np.zeros([self.gaussian_number * (DOF+4)])
+        self.previous_state = np.zeros([self.gaussian_number * DOF+4])
         
         # weights
-        self.actor_weights = np.zeros([ self.actor_n_output, self.n_input * (DOF+2)])
-        self.critic_weights = np.zeros(self.n_input * (DOF+2))
+        self.actor_weights = np.zeros([ self.actor_n_output, self.n_input * (DOF+4)])
+        self.critic_weights = np.zeros(self.n_input * (DOF+4))
         
         # noise
-        self.actual_noise = np.zeros([self.actor_n_output, 1])
+        self.actual_noise = np.zeros([self.actor_n_output])
         self.previous_noise = np.zeros(self.actor_n_output)
         
         
@@ -72,11 +76,14 @@ class ActorCritic:
         self.ep3d = np.zeros(3)
     
         # critic output parameters
-        self.surprise = np.zeros(1)
+        self.actual_reward = 0
+        self.surprise = 0
         self.actual_critic_output = np.zeros(self.critic_n_output)
         self.previous_critic_output = np.zeros(self.critic_n_output)
         
         self.needed_steps = np.zeros(self.n_trial)
+        self.trial5 = np.zeros(5)
+        self.avaragemovements = np.zeros(self.n_trial/5)
                
     def spreading(self, w, pattern):
         return np.dot(w, pattern)
