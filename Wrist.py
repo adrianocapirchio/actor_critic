@@ -11,7 +11,7 @@ import math_utils as utils
 
 class Wrist:
     
-    def init(self):
+    def init(self, gaussian_number):
         
         # kg
         self.MASS = 1.
@@ -22,6 +22,7 @@ class Wrist:
         self.agent_starting_2dposition = np.zeros(2)
         
         # 3d movements
+        self.position3d_state = np.zeros(gaussian_number*3)
         self.force = np.zeros(3)
         self.actual_3derror = np.zeros(3)
         self.previous_3derror = np.zeros(3)
@@ -32,6 +33,9 @@ class Wrist:
         self.actual_3dacceleration = np.zeros(3)
         
         # 2d movements
+        self.reward_position = np.zeros(2)
+        self.reward_state = np.zeros(gaussian_number*2)
+        self.position2d_state = np.zeros(gaussian_number*2)
         self.actual_2derror = np.zeros(2)
         self.previous_2derror = np.zeros(2)
         self.next_2dposition = np.zeros(2)
