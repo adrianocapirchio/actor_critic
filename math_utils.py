@@ -8,10 +8,17 @@ Created on Wed Sep 20 13:17:18 2017
 import numpy as np
 import scipy as scy
 
-def gaussian(x, mu, std_dev):    
-    dist = (x - mu) ** 2
-    den = 2 * std_dev ** 2
-    return np.exp(- dist / den)
+
+def gaussian(x, mu, sig):
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+
+
+#def gaussian(x, mu, std_dev):
+
+    
+ #   dist = (x - mu) ** 2
+  #  den = 2 * std_dev ** 2
+   # return np.exp(- dist / den)
 
 def sigmoid(x):
     return 1 / (1.0 + clipped_exp(-(2.0*x)))
@@ -21,9 +28,11 @@ def clipped_exp(x):
     return np.exp(cx)
 
 def computate_noise(previous_noise, delta_time, tau): 
+    
     C1 = delta_time / tau
-    C2 = 1.1
+    C2 = 1.9
     return previous_noise + C1 * (C2 * np.random.randn(*previous_noise.shape) - previous_noise)
+
 
 def derivative(x1, x2, delta_time, tau):
     return (x1 - x2) / (delta_time / tau)
@@ -78,31 +87,20 @@ def placeReward(trial):
     reward_position = np.zeros(2)
     
     if trial % 8 == 0:
-        reward_position = np.array([5 , 8])
+        reward_position = np.array([5 , 9])
     if trial % 8 == 1:
-        reward_position = np.array([7 , 7])
+        reward_position = np.array([8 , 8])
     if trial % 8 == 2:
-        reward_position = np.array([8 , 5])
+        reward_position = np.array([9 , 5])
     if trial % 8 == 3:
-        reward_position = np.array([7 , 3])
+        reward_position = np.array([8 , 2])
     if trial % 8 == 4:
-        reward_position = np.array([5 , 2])
+        reward_position = np.array([5 , 1])
     if trial % 8 == 5:
-        reward_position = np.array([3 , 3])
+        reward_position = np.array([2 , 2])
     if trial % 8 == 6:
-        reward_position = np.array([2 , 5])
+        reward_position = np.array([1 , 5])
     if trial % 8 == 7:
-        reward_position = np.array([3 , 7])
-    return reward_position    
-
-    
-
-    
-
-
-
-
-
-
-
+        reward_position = np.array([2 , 8])
+    return reward_position 
 
