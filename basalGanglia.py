@@ -5,101 +5,149 @@ Created on Tue Oct 03 15:36:46 2017
 @author: Alex
 """
 
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Oct 03 15:36:46 2017
-@author: Alex
-"""
-
 import numpy as np
+import math_utils as utils
 
 class ActorCritic:
     
-    def init(self, DOF = 3):
+    def init(self,  VISION, GOAL_VISION , AGENT_VISION, wrist,  multiNet, maxStep, wristRange, DOF = 3):
         
-        # GENERAL PARAMETERS
-        self.interN = 29 # define intervals used to define the number of gaussian (kernel)
-        self.gaussN = self.interN + 1 
-        self.interL= 1. / self.interN
-        self.posX = np.zeros([self.gaussN, DOF]) # gaussian avarage value
-        self.rewX = np.zeros([self.gaussN, 2]) # gaussian avarage value
-        self.std_dev = 0.031/3 #/ ((self.interN-1) * 2)
         
-        # computate gaussian's average values
-        for gn in xrange(self.gaussN):
-            if gn == 0 :
-                self.posX[0] = 0    
+        #TIME PARAMETERS
+        self.DELTM = 0.1
+        self.TAU = 1.
+        
+        # LEARNING PARAMETeRS
+        self.ACT_ETA = 0.5#0.1
+        self.CRIT_ETA =  0.01 #0.01
+        self.DISC_FACT = 0.9
+        
+        self.activeSistems = np.array([])
+        
+        # wrist paramenters
+        if wrist == True:
+            
+            self.inputUnitsWrist= 125
+            self.intervalsWrist = int(np.cbrt(self.inputUnitsWrist+1))
+            self.sigWrist= 1. / ((self.intervalsWrist) * 2)
+            self.wristGrid = utils.build3DGrid(self.intervalsWrist, 1)
+            self.wristRawState = np.zeros([self.intervalsWrist,self.intervalsWrist,self.intervalsWrist])
+            self.wristState= np.zeros(self.inputUnitsWrist)
+            self.activeSistems =np.hstack([self.activeSistems,np.array([len(self.wristState)])])
+     #       self.activeSistems.append(np.zeros(self.wristState))
+        
+        
+        # VISION PARAMETERS
+        if VISION == True:
+            
+            self.inputUnitsVision = 100
+            self.intervalsVision = int(np.sqrt(self.inputUnitsVision+1))                                                                        #◘ 199 # define intervals used to define the number of gaussian (kernel)
+            self.sigVision= 1. / ((self.intervalsVision) * 2) * 10
+            self.visionGrid = utils.build2DGrid(self.intervalsVision, 10)
+            self.visionRawState = np.zeros([self.intervalsVision,self.intervalsVision])
+            self.visionState = np.array([])
+            
+            if GOAL_VISION == True:
+                self.goalVisionState = np.zeros(self.inputUnitsVision)
             else:
-                self.posX[gn] = self.posX[gn-1] + self.interL
-                      
-        # computate gaussian's average values
-        for gn in xrange(self.gaussN):
-            if gn == 0 :
-                self.rewX[0] = 0    
+                self.goalVisionState  = np.array([])
+            self.visionState = np.hstack([self.visionState,self.goalVisionState])
+            
+            
+            if AGENT_VISION == True:
+                self.agentVisionState = np.zeros(self.inputUnitsVision)    
             else:
-                self.rewX[gn] = self.rewX[gn-1] + self.interL* 10
+                self.agentVisionState  = np.array([])
+            
+            self.visionState = np.zeros(len(self.visionState)+len(self.agentVisionState))
         
-        # TIME PARAMETERS
-        self.delT = 0.1
-        self.tau = 1.  
-        self.trialN = 50000
-        self.trialMov = 50
-    
-        # input units
-        self.inputN = self.gaussN
+            self.activeSistems= np.hstack([self.activeSistems,np.array([len(self.visionState)])])
+
         
-        # output units
-        self.actNOut = DOF
-        self.critNOut = 1
-        
-        # learning parameters
-        self.ACT_ETA =   1 * 10 **(-2)
-        self.CRIT_ETA =  2 * 10 ** (-4)
-        self.DISC_FACT = 5 * 10 ** (-6)
-    
-        # ANN's state arrays
-        self.actState = np.zeros([self.gaussN * (DOF+2)])
-        self.prvState = np.zeros([self.gaussN * (DOF+2)])
-        self.stateBuff = np.zeros([self.gaussN * (DOF+2), self.trialMov])
-        
-        # weights
-        self.actW = np.zeros([ self.actNOut, self.inputN * (DOF+2)])
-        self.critW= np.zeros(self.inputN * (DOF+2))
-        
-        # noise
-        self.actNoise = np.zeros(self.actNOut)
-        self.prvNoise = np.zeros(self.actNOut)
-        self.noiseBuff = np.zeros([DOF, self.trialMov])
+        # GLOBAL PARAMETERS
+        self.currState = np.zeros(int(np.sum(self.activeSistems)))
+        self.prvState = np.zeros(int(np.sum(self.activeSistems)))
         
         
-        self.actOut = np.zeros(DOF)
-        self.outBuff = np.zeros([DOF, self.trialMov])
-        self.ep3D = np.zeros(DOF)
-    
-        # critic output parameters
+        self.stateBuff = np.zeros([int(np.sum(self.activeSistems)) , maxStep])
+        self.desOutBuff = np.zeros([DOF, maxStep])
+        self.surpBuff = np.zeros(maxStep)
+     
+        self.actW = np.zeros([int(np.sum((self.activeSistems))), DOF])
+        self.critW= np.zeros(int(np.sum((self.activeSistems))))
+        
+            
+        if multiNet == True:
+            self.actW0 = self.actW.copy()
+            self.actW1 = self.actW.copy()
+            self.actW2 = self.actW.copy()
+            self.actW3 = self.actW.copy()
+            self.actW4 = self.actW.copy()
+            self.actW5 = self.actW.copy()
+            self.actW6 = self.actW.copy()
+            self.actW7 = self.actW.copy()
+            self.actW8 = self.actW.copy()
+            
+            self.critW0= self.critW.copy()
+            self.critW1= self.critW.copy()
+            self.critW2= self.critW.copy()
+            self.critW3= self.critW.copy()
+            self.critW4= self.critW.copy()
+            self.critW5= self.critW.copy()
+            self.critW6= self.critW.copy()
+            self.critW7= self.critW.copy()
+            self.critW8= self.critW.copy()
+        
+        # output
+        self.currActOut = np.zeros(DOF)
+        self.prvActOut = np.zeros(DOF)
+        
         self.actRew = 0
-        self.surp = 0.
-        self.surpBuff = np.zeros(self.trialMov)
-        self.actCritOut= np.zeros(self.critNOut)
-        self.prvCritOut= np.zeros(self.critNOut)
+        self.surp = 0
+        self.currCritOut = np.zeros(1)
+        self.prvCritOut =  np.zeros(1)
         
-        self.rewMov = np.zeros(self.trialN)
-        self.trial200 = np.zeros(200)
-        self.avgMov = np.zeros(self.trialN/200)
-               
-    def spreading(self, w, pattern):
-        return np.dot(w, pattern)
+        self.currNoise = np.zeros(DOF)
+        self.prvNoise = np.zeros(DOF)
+        
+    def computate_noise(self,T): 
+        self.C1 = self.DELTM/ self.TAU
+        self.C2 = 0.3
+        self.currNoise = self.prvNoise + self.C1 * (self.C2 * np.random.randn(*self.prvNoise.shape) - self.prvNoise) * T
+            
+    def compGoalVisionState(self, goalPosition):
+        self.goalVisionRawState = (utils.gaussian2D(goalPosition,self.visionGrid,self.sigVision,self.visionRawState,self.intervalsVision)).copy()
+        self.goalVisionState = self.goalVisionRawState.reshape(self.inputUnitsVision).copy()
+        
+    def compAgentVisionState(self, agentPosition):
+        self.agentVisionRawState = (utils.gaussian2D(agentPosition,self.visionGrid,self.sigVision,self.visionRawState,self.intervalsVision)).copy()
+        self.agentVisionState = self.agentVisionRawState.reshape(self.inputUnitsVision).copy()
+        
+    def compWristState(self, wristPosition):
+        self.wristRawState = (utils.gaussian3D(wristPosition,self.wristGrid,self.sigWrist,self.wristRawState,self.intervalsWrist)).copy()
+        self.wristState = self.wristRawState.reshape(self.inputUnitsWrist).copy()      
+    
+    
+    def spreadAct(self):
+        self.currActOut[0] = utils.sigmoid(np.dot(self.actW[:,0], self.currState)).copy()
+        self.currActOut[1] = utils.sigmoid(np.dot(self.actW[:,1], self.currState)).copy()
+        self.currActOut[2] = utils.sigmoid(np.dot(self.actW[:,2], self.currState)).copy()
+        
+    
+    def spreadCrit(self): 
+        self.currCritOut = np.dot(self.critW, self.currState)
+        
 
-    def computeTdError(self):
-        x = self.DISC_FACT * self.actCritOut - self.prvCritOut
-        return x + self.actRew 
-        
+    def compSurprise(self):
+        self.surp = (self.actRew + (self.DISC_FACT * self.currCritOut) - self.prvCritOut)
+           
     def trainAct(self):    
-        return self.ACT_ETA * self.surp * np.outer(self.prvState, self.prvNoise)
+        self.actW += np.outer(self.prvState, self.prvNoise) * self.surp * self.ACT_ETA
 
-    def trainActNONO(self):    
-        return self.ACT_ETA * self.surp * self.prvState
-
-        
+       
     def trainCrit(self):
-        return self.CRIT_ETA * self.surp * self.prvState
+        self.critW += self.CRIT_ETA * self.surp * self.prvState
+        
+        
+    def trainAct2(self,prvCerebEp):
+        self.actW += np.outer(self.prvState, (prvCerebEp - self.prvActOut)) * self.surp * self.ACT_ETA

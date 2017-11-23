@@ -7,61 +7,94 @@ Created on Tue Oct 03 15:25:29 2017
 
 import numpy as np
 import math_utils as utils
+import cmath
 
 
 class Wrist:
     
-    def init(self, gaussian_number):
+    def init(self):
         
         # kg
+        self.wristRange = 1.
+        self.DOF = 3
         self.MASS = 1.
-        self.DELTATM = 0.1
+        
+        
+        
+        self.DELTM = 0.1
         self.TAU = 1.
         
-        # 3d movements
-        self.position3d_state = np.zeros(gaussian_number*3)
-        self.force = np.zeros(3)
-        self.actual_3derror = np.zeros(3)
-        self.previous_3derror = np.zeros(3)
-        self.actual_3dposition = np.zeros(3)
-        self.previous_3dposition = np.zeros(3)
-        self.actual_3dvelocity = np.zeros(3)
-        self.previous_3dvelocity = np.zeros(3)
-        self.actual_3dacceleration = np.zeros(3)
         
-        # 2d movements
-        self.reward_state = np.zeros(gaussian_number*2)
-        self.position2d_state = np.zeros(gaussian_number*2)
-        self.actual_2derror = np.zeros(2)
-        self.previous_2derror = np.zeros(2)
-        self.next_2dposition = np.zeros(2)
-        self.actual_2dposition = np.zeros(2)
-        self.previous_2dposition = np.zeros(2)
-        self.actual_2dvelocity = np.zeros(2)
-        self.previous_2dvelocity = np.zeros(2)
-        self.actual_2dacceleration = np.zeros(2)
+        
+        # 3d movements
+        self.curr3DPos = np.ones(3) * 0.5
+        self.prv3DPos = np.ones(3) * 0.5
+        
+        # noise
+        self.currNoise = np.zeros(self.DOF)
+        self.prvNoise = np.zeros(self.DOF)
+        
+        
+        
+        
+        
+        
+        
+        
+        
+  
+         
+        
+        
+        self.ep = np.ones(3) * 0.5
+        self.prvEp = np.ones(3) * 0.5
+        
+        
+        self.force = np.zeros(3)
+        self.curr3DErr = np.zeros(3)
+        self.curr3DVel = np.zeros(3)
+        self.curr3DAcc = np.zeros(3)
+        self.prv3DErr = np.zeros(3)
+        self.prv3DPos =np.zeros(3)
+        self.prv3DVel = np.zeros(3)
+        
+        
+    
+        
+        
         
     def pdControl(self): 
-        Kp = 21.
-        Kd = 8.
-        force = Kp * (self.actual_3derror) + Kd * utils.derivative(self.actual_3derror, self.previous_3derror, self.DELTATM, self.TAU)
-        return force
+        Kp = 0.75
+        Kd = 0.25
+        self.force = Kp * (self.curr3DErr) + Kd * utils.derivative(self.prv3DErr, self.curr3DErr, self.DELTM, self.TAU)
+        
         
     def saveMov3d(self):
-        self.previous_3derror = self.actual_3derror.copy()
-        self.previous_3dposition = self.actual_3dposition.copy() 
-        self.previous_3dvelocity = self.actual_3dvelocity.copy()
-        self.previous_3dacceleration = self.actual_3dacceleration.copy()
+        self.prv3DErr = self.curr3DErr.copy()
+        self.prv3DPos = self.curr3DPos.copy() 
+        self.prv3DVel = self.curr3DVel.copy()
         
         
-    def move3d(self, ep3d): 
-        self.actual_3derror = utils.error(ep3d, self.actual_3dposition)
-        self.force = self.pdControl()
-        self.actual_3dacceleration = self.force / self.MASS
-        self.actual_3dvelocity = self.previous_3dvelocity + self.actual_3dacceleration * self.DELTATM
-        self.actual_3dposition = self.previous_3dposition + self.actual_3dvelocity * self.DELTATM
-        self.actual_3dposition = utils.Cut_range(self.actual_3dposition, 0.00001, 0.99999)
-        return self.actual_3dposition  
+    def move3d(self): 
+        self.curr3DErr = (self.ep - self.prv3DPos).copy()
+        self.pdControl()
+        self.curr3DAcc = (self.force / self.MASS).copy()
+        self.curr3DVel = (self.prv3DVel + self.curr3DAcc * self.DELTM).copy()
+        self.curr3DPos = (self.prv3DPos + self.curr3DVel * self.DELTM).copy() 
+        self.curr3DPos[0] = utils.Cut_range(self.curr3DPos[0], 0.1 , 0.9)
+        self.curr3DPos[1] = utils.Cut_range(self.curr3DPos[1], 0.1 , 0.9)
+        self.curr3DPos[2] = utils.Cut_range(self.curr3DPos[2], 0.1 , 0.9)
+        
+      #  self.curr3DPos = np.(self.curr3DPos)
+       # self.curr3DPos = (utils.polar2cart(0.5, self.curr3DPos)).copy()
+     #   self.curr3DPos[1] = utils.Cut_range(self.curr3DPos[1],np.sin(np.deg2rad(-30))+ 0.5, np.sin(np.deg2rad(+30))).copy()
+     #   self.curr3DPos[2] = utils.Cut_range(self.curr3DPos[2], 0.3, 0.9).copy()
+ 
+    
+    
+    
+    
+  
     
     
     
