@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Wed Oct 18 23:07:27 2017
+Created on Wed Dec 06 22:35:37 2017
 
 @author: Alex
 """
@@ -10,56 +10,98 @@ import math_utils as utils
 
 class Cerebellum():
     
-    def init(self, multiNet, stateBg, DOF = 3):
+    def init(self, multiNet, stateBg, visionState, wristState, rewList, activeSistems, DOF = 3):
         
+        # TIME
         self.DELTM = 0.1
         self.TAU = 1.
         
-        self.cbETA = 0.01
+        # LEARNING
+        self.cbETA = 0.04
         
-        self.actState = np.zeros(len(stateBg))
+        # STATE
+        self.currState = np.zeros(len(stateBg))
+        self.fwdVisionState = np.ones(len(np.hstack([visionState,wristState])))
+        self.prvFwdVisionState = self.fwdVisionState.copy()
+        
+        # WEIGHTS
+        self.w = np.zeros([len(stateBg), DOF])
+        self.fwdVisionW = np.zeros([len(np.hstack([visionState,wristState])), 2])
+        self.fwdWristW = np.zeros([len(np.hstack([wristState,wristState])), 3])
+        
+        if multiNet == True:            
+            self.multiCerebW = np.zeros([len(stateBg), DOF, len(rewList)])
+            self.multiFwdVisionW = np.zeros([len(np.hstack([visionState,wristState])), len(visionState), len(rewList)])
+            self.multiFwdWristW = np.zeros([len(np.hstack([wristState,wristState])), len(wristState), len(rewList)])
+        
+         
+        # TEACHING 
+        self.trainOut = np.array([0.5,0.5,0.5])
+        self.errorOut = np.zeros(DOF)
+        
+        self.trainEstVision = np.zeros(2)
+        self.errorTrainEstVision = np.zeros(2)
+        self.estVision = np.zeros(2)
+        self.errorEstVision = np.zeros(2)
+        self.fwdVisionError = np.zeros(2)
+        self.prvFwdVisionError = np.zeros(2)
+        
+     #   self.trainEstWrist = np.ones(len(np.hstack([wristState,wristState]))) * 0.5
+     #   self.errorEstWrist = np.zeros(len(wristState))
+        
+        # OUTPUT
+        self.currOut = np.array([0.5,0.5,0.5])
+        self.prvOut = np.array([0.5,0.5,0.5])
         
         
-        self.w = np.zeros([len(self.actState), DOF])
-        
-        if multiNet == True:
-            self.w0 = self.w.copy()
-            self.w1 = self.w.copy()
-            self.w2 = self.w.copy()
-            self.w3 = self.w.copy()
-            self.w4 = self.w.copy()
-            self.w5 = self.w.copy()
-            self.w6 = self.w.copy()
-            self.w7 = self.w.copy()
-            self.w8 = self.w.copy()   
-            
-        self.currNoise = np.zeros(DOF)
-        self.prvNoise = np.zeros(DOF)
+        self.estWrist = np.zeros(2)
+                               
+        self.trialFwdError = 0.
         
         
-        self.currOut = np.zeros(DOF)
-        self.prvOut = np.zeros(DOF)
-        self.trainOut = np.zeros(DOF)
-        self.error = np.zeros(DOF)
+    def epochReset(self):
         
-    def computate_noise(self): 
-        self.C1 = self.DELTM/ self.TAU
-        self.C2 = 0.00
-        self.currNoise = self.prvNoise + self.C1 * (self.C2 * np.random.randn(*self.prvNoise.shape) - self.prvNoise)
-      #  self.currNoise = utils.change_range(self.currNoise, -1., 1., -0.5, 0.5)
-                                            
-    def trainCb(self,state, ep):
-        self.trainOut[0] = utils.sigmoid(np.dot(self.w[:,0], state)).copy()
-        self.trainOut[1] = utils.sigmoid(np.dot(self.w[:,1], state)).copy()
-        self.trainOut[2] = utils.sigmoid(np.dot(self.w[:,2], state)).copy()
-        self.error = (ep - self.trainOut).copy()
-        self.w += self.cbETA * np.outer(state, self.error) 
-       # (np.sum(surp))/len(np.trim_zeros(surp)) *
-   #     print self.w                                       
+        # OUTPUT
+        self.currOut = np.array([0.5,0.5,0.5])
+        self.prvOut = np.array([0.5,0.5,0.5])
+        
+        self.estVision *= 0.
+        self.errorEstVision *= 0
+        
+    def trialReset(self):
+        
+        # OUTPUT
+        self.currOut = np.array([0.5,0.5,0.5])
+        self.prvOut = np.array([0.5,0.5,0.5]) 
+        
+        self.trialFwdError *= 0 
+        self.estVision *= 0.  
+        self.errorEstVision *= 0            
+        
+    def trainCb(self,state, ep, T):
+        self.trainOut = utils.sigmoid(np.dot(self.w.T, state))
+        self.errorOut = ep - self.trainOut
+        self.w += self.cbETA * np.outer(state, self.errorOut) * self.trainOut * (1. - self.trainOut) * T
+                                       
+    def trainCb2(self,state, ep, surp, T):
+        self.trainOut = utils.sigmoid(np.dot(self.w.T, state))
+        self.errorOut = ep - self.trainOut
+        self.w += self.cbETA * np.outer(state, self.errorOut) * surp * self.trainOut * (1. - self.trainOut) * T                                   
+                                       
+        
+    def trainFwdVision(self, curr2DPos):
+        self.trainEstVision = utils.sigmoid(np.dot(self.fwdVisionW.T, self.prvFwdVisionState))
+        self.errorTrainEstVision = utils.change_range(curr2DPos, -1., 1., 0., 1.)- self.trainEstVision
+        self.fwdVisionW += self.cbETA * np.outer(self.prvFwdVisionState, self.errorTrainEstVision) 
+    
+        
     def spreading(self,state):
-        self.currOut[0] = utils.sigmoid(np.dot(self.w[:,0], state)).copy()
-        self.currOut[1] = utils.sigmoid(np.dot(self.w[:,1], state)).copy()
-        self.currOut[2] = utils.sigmoid(np.dot(self.w[:,2], state)).copy()
+        self.currOut = utils.sigmoid(np.dot(self.w.T, state))
         
-    
-    
+    def fwdVision(self):
+        self.estVision = utils.sigmoid(np.dot(self.fwdVisionW.T, self.fwdVisionState))
+   
+        
+        
+        
+        
